@@ -126,7 +126,7 @@ func (dag *Dag) AddNode(id string, value interface{}) (*Node, error) {
 
 // AddEdge adds an edge between nodes
 func (dag *Dag) AddEdge(from, to string) error {
-	// chack if we have reverse edges for the "to" node
+	// check if we have reverse edges for the "to" node
 	if fromEdges, inMap := dag.revEdges[to]; inMap {
 		// check if edge exists
 		if _, fromExist := fromEdges[from]; fromExist {
