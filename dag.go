@@ -13,7 +13,7 @@ type Node struct {
 }
 
 // NodeCBFunc callback function for traversing
-type NodeCBFunc func(node *Node) error
+type NodeCBFunc func(node *Node, depth int) error
 
 // WalkType determines the kind of the traversal
 type WalkType int
@@ -42,19 +42,19 @@ func (node *Node) Walk(wt WalkType, cb NodeCBFunc) error {
 	}
 	// for DFS we explicitly visit the root node first and then
 	// let the recursive function do is thing
-	if err := cb(node); err != nil {
+	if err := cb(node, 0); err != nil {
 		return err
 	}
-	return walkDepthFirst(node, cb)
+	return walkDepthFirst(node, cb, 1)
 }
 
-func walkDepthFirst(node *Node, cb NodeCBFunc) error {
+func walkDepthFirst(node *Node, cb NodeCBFunc, depth int) error {
 	for _, child := range node.Children {
-		if err := cb(child); err != nil {
+		if err := cb(child, depth); err != nil {
 			return err
 		}
 		if !child.IsLeaf() {
-			if err := walkDepthFirst(child, cb); err != nil {
+			if err := walkDepthFirst(child, cb, depth+1); err != nil {
 				return err
 			}
 		}
@@ -85,22 +85,34 @@ func (q *queue) isEmpty() bool {
 // queue has more ? -> pop -> visit -> push children in queue -> repeat
 func walkBreadthFirst(node *Node, cb NodeCBFunc) error {
 
+	var depth, remain, next int
 	q := queue{}
 	// push the root node
 	q.push(node)
+	// one elemnt remains for this depth
+	remain = 1
 
 	for {
 		if q.isEmpty() {
 			return nil
 		}
+		// pop and call
 		currNode := q.pop()
-		if err := cb(currNode); err != nil {
+		if err := cb(currNode, depth); err != nil {
 			return err
 		}
+		remain = remain - 1
+
 		if !currNode.IsLeaf() {
 			for _, child := range currNode.Children {
 				q.push(child)
 			}
+			next = next + len(currNode.Children)
+		}
+		if remain == 0 {
+			depth = depth + 1
+			remain = next
+			next = 0
 		}
 	}
 }
@@ -164,7 +176,7 @@ func (dag *Dag) IsAcyclic() bool {
 
 	for _, root := range roots {
 		visitedSet := map[string]struct{}{}
-		err := root.Walk(WalkDepthFirst, func(node *Node) error {
+		err := root.Walk(WalkDepthFirst, func(node *Node, depth int) error {
 			if _, visited := visitedSet[node.ID]; visited {
 				return errors.New("The graph has cycles")
 			}
